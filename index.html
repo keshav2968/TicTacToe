@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic-Tac-Toe AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #fafafa;
+      text-align: center;
+    }
+  
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+      margin-top: 20px;
+    }
+  
+    .cell {
+      width: 100px; height: 100px;
+      background: #f2f2f2;
+      font-size: 2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 1px solid #ccc;
+    }
+  
+    .cell.taken {
+      pointer-events: none;
+    }
+  
+    select, button {
+      margin: 10px;
+      padding: 5px;
+    }
+  
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+  </style>
+  
+</head>
+<body>
+  <h1>Tic-Tac-Toe</h1>
+
+  <label>Difficulty:
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+  </label>
+
+  <label>Play As:
+    <select id="playerSymbol">
+      <option value="X" selected>X (First)</option>
+      <option value="O">O (Second)</option>
+    </select>
+  </label>
+
+  <button onclick="startGame()">Start Game</button>
+
+  <div id="board"></div>
+  <div id="status"></div>
+
+  <script>
+    let board, currentPlayer, human, ai, difficulty;
+
+    const winCombos = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function startGame() {
+      board = Array(9).fill(null);
+      difficulty = document.getElementById("difficulty").value;
+      human = document.getElementById("playerSymbol").value;
+      ai = human === "X" ? "O" : "X";
+      currentPlayer = "X";
+      document.getElementById("status").textContent = "";
+      renderBoard();
+      if (ai === "X") aiMove();
+    }
+
+    function renderBoard() {
+      const boardDiv = document.getElementById("board");
+      boardDiv.innerHTML = "";
+      board.forEach((val, idx) => {
+        const cell = document.createElement("div");
+        cell.className = "cell" + (val ? " taken" : "");
+        cell.textContent = val || "";
+        if (!val) cell.onclick = () => makeMove(idx, human);
+        boardDiv.appendChild(cell);
+      });
+    }
+
+    function makeMove(index, player) {
+      if (board[index] || isGameOver(board)) return;
+      board[index] = player;
+      currentPlayer = player === "X" ? "O" : "X";
+      renderBoard();
+      const result = checkWinner(board);
+      if (result) endGame(result);
+      else if (currentPlayer === ai) setTimeout(aiMove, 300);
+    }
+
+    function aiMove() {
+      let index;
+      if (difficulty === "easy") {
+        const available = board.map((v, i) => v ? null : i).filter(v => v !== null);
+        index = available[Math.floor(Math.random() * available.length)];
+      } else if (difficulty === "medium") {
+        index = Math.random() < 0.5 ? minimax(board, 0, -Infinity, Infinity, true).index :
+                 board.map((v, i) => v ? null : i).filter(v => v !== null)[0];
+      } else {
+        index = minimax(board, 0, -Infinity, Infinity, true).index;
+      }
+      makeMove(index, ai);
+    }
+
+    function checkWinner(bd) {
+      for (let [a, b, c] of winCombos) {
+        if (bd[a] && bd[a] === bd[b] && bd[a] === bd[c]) return bd[a];
+      }
+      return bd.every(cell => cell) ? "Tie" : null;
+    }
+
+    function endGame(result) {
+      if (result === "Tie") document.getElementById("status").textContent = "It's a tie!";
+      else document.getElementById("status").textContent = `${result} wins!`;
+      document.querySelectorAll('.cell').forEach(cell => cell.onclick = null);
+    }
+
+    function isGameOver(bd) {
+      return checkWinner(bd) !== null;
+    }
+
+    function minimax(bd, depth, alpha, beta, isMaximizing) {
+      const result = checkWinner(bd);
+      if (result === ai) return { score: 10 - depth };
+      if (result === human) return { score: depth - 10 };
+      if (result === "Tie") return { score: 0 };
+
+      let best;
+      const available = bd.map((v, i) => v ? null : i).filter(v => v !== null);
+
+      if (isMaximizing) {
+        best = { score: -Infinity };
+        for (let i of available) {
+          bd[i] = ai;
+          const score = minimax(bd, depth + 1, alpha, beta, false);
+          bd[i] = null;
+          if (score.score > best.score) best = { score: score.score, index: i };
+          alpha = Math.max(alpha, best.score);
+          if (beta <= alpha) break;
+        }
+      } else {
+        best = { score: Infinity };
+        for (let i of available) {
+          bd[i] = human;
+          const score = minimax(bd, depth + 1, alpha, beta, true);
+          bd[i] = null;
+          if (score.score < best.score) best = { score: score.score, index: i };
+          beta = Math.min(beta, best.score);
+          if (beta <= alpha) break;
+        }
+      }
+      return best;
+    }
+
+    // Auto start with default settings
+    window.onload = startGame;
+  </script>
+</body>
+</html>
